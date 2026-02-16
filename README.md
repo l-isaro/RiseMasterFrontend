@@ -1,73 +1,32 @@
-# Welcome to your Lovable project
+# RISEMASTER Frontend
 
-## Project info
+**RISEMASTER** is an AI-powered adaptive mathematics learning platform for Rwandan secondary school students (S1–S6). It uses real REB national examination past papers, step-by-step guidance, teen-friendly concept introductions, multi-level hints, and Bayesian Knowledge Tracing (BKT) to track and celebrate individual learning progress (growth mindset over final scores).
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+This repository contains the **frontend web application** built with React, Tailwind CSS, and modern best practices.
+## Project Context
 
-## How can I edit this code?
+**Full Title**  
+Modeling Individual Educational Gain in STEM: An AI-Powered Platform for Tracking and Rewarding Learning Progress in African Higher Education
 
-There are several ways of editing your application.
+### Completed Features
+- Responsive web layout (desktop-first, mobile/tablet supported)
+- Routing setup with React Router v6
+- **Registration / Login page**
+- **Dashboard**
+- **Profile page**
+- **Not Found (404) page**
+- Basic styling with Tailwind CSS
+- Clean component structure and shared UI elements
 
-**Use Lovable**
+### Missing / In Progress Features
+- **Practice Session page**
+- **Progress page**
+- API integration for practice & progress data
+- Animations (Framer Motion) & micro-interactions
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Screenshots
+<img width="1918" height="921" alt="image" src="https://github.com/user-attachments/assets/bda71292-bfb4-4b1c-a178-b6778f00ecae" />
+<img width="1899" height="922" alt="image" src="https://github.com/user-attachments/assets/4c4777af-62cf-47a6-9a1d-540093c193a1" />
+<img width="1896" height="922" alt="image" src="https://github.com/user-attachments/assets/4dd964a5-749c-42e5-bac6-ba96f973c739" />
+<img width="1919" height="924" alt="image" src="https://github.com/user-attachments/assets/8a4f62fa-bcf6-4278-bc0f-6e6ffef42635" />
+<img width="1918" height="926" alt="image" src="https://github.com/user-attachments/assets/bc08247f-98ff-4216-9533-0ad6f5a0d4d0" />
