@@ -148,7 +148,7 @@ const Progress = () => {
           animate={{ opacity: 1, y: 0 }}
         >
           <h1 className="mb-1 text-3xl font-bold text-foreground">
-            Your Progress 📈
+            Your Progress
           </h1>
           <p className="mb-8 text-muted-foreground">
             Look how far you've come — every step matters!

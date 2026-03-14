@@ -204,7 +204,7 @@ export const mockQuestion1 = {
       hint2: "2→10→50→250→1250→6250",
       hint3: "Missing terms: 10, 50, 250, 1250",
       correctAnswer: "10,50,250,1250|10 50 250 1250|10;50;250;1250",
-      latex: "2,\\ 10,\\ 50,\\ 250,\\ 1250,\\ 6250",
+      latex: "2,\\ \\_,\\ \\_,\\ \\_,\\ \\_,\\ 6250",
     },
   ],
   fullQuestion: "Final answer: list the 4 inserted terms in order.",
