@@ -101,6 +101,26 @@ const Onboarding = () => {
               ))}
             </select>
           </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Password
+            </label>
+            <input
+              type="password"
+              required
+              className="w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              required
+              className="w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
 
           <motion.button
             whileHover={{ scale: 1.02 }}
