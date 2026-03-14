@@ -1,40 +1,56 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, ArrowRight } from "lucide-react";
+import { BookOpen, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { registerUser } from "../data/api.js";
+import { loginUser } from "../data/api.js";
 import { useToast } from "@/hooks/use-toast.js";
 
-const Onboarding = () => {
+const Login = () => {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [classLevel, setClassLevel] = useState("");
-
   const { toast } = useToast();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!email || !password) {
+      toast({
+        title: "Missing info",
+        description: "Enter your email and password.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      const user = await registerUser({
-        name,
-        email,
-        class_level: classLevel,
+      const user = await loginUser({
+        email: email || undefined,
+        password: password || undefined,
       });
 
       localStorage.setItem("user_id", user.user_id);
       localStorage.setItem("user_name", user.name);
-      localStorage.setItem("user_email", email);
+      localStorage.setItem("user_email", user.email); // use backend returned email
       localStorage.setItem("class_level", user.class_level);
 
-      navigate("/login");
+      toast({
+        title: "Welcome back!",
+        description: `Logged in as ${user.name}.`,
+      });
+
+      navigate("/dashboard");
     } catch (err) {
       toast({
-        title: "Registration failed",
+        title: "Login failed",
         description: err?.message || "Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -54,23 +70,12 @@ const Onboarding = () => {
             RISE<span className="text-primary">MASTER</span>
           </h1>
           <p className="mt-2 text-center text-base text-muted-foreground">
-            Master Math One Step at a Time
+            Log in to continue learning
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
-              Your Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-          </div>
+          {/* Email */}
           <div>
             <label className="mb-1 block text-sm font-medium text-foreground">
               Email
@@ -79,45 +84,55 @@ const Onboarding = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="alice@example.com"
+              className="w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
-              Class Level
-            </label>
-            <select
-              value={classLevel}
-              onChange={(e) => setClassLevel(e.target.value)}
-              required
-              className="w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-            >
-              <option value="">Select your class</option>
-              {["S1", "S2", "S3", "S4", "S5", "S6"].map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
 
+          {/* Button with loading */}
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: isLoading ? 1 : 1.02 }}
+            whileTap={{ scale: isLoading ? 1 : 0.98 }}
             type="submit"
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl gradient-primary px-6 py-3.5 text-lg font-semibold text-primary-foreground shadow-sm"
+            disabled={isLoading}
+            className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl gradient-primary px-6 py-3.5 text-lg font-semibold text-primary-foreground shadow-sm ${
+              isLoading ? "opacity-80 cursor-not-allowed" : ""
+            }`}
           >
-            Let's Start Learning! <ArrowRight className="h-5 w-5" />
+            {isLoading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Logging in...
+              </>
+            ) : (
+              <>
+                Continue <ArrowRight className="h-5 w-5" />
+              </>
+            )}
           </motion.button>
+
+          {/* Link to register */}
           <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
+            Don’t have an account?{" "}
             <button
               type="button"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/")}
               className="font-semibold text-primary hover:underline"
             >
-              Log in
+              Create one
             </button>
           </p>
         </form>
@@ -126,4 +141,4 @@ const Onboarding = () => {
   );
 };
 
-export default Onboarding;
+export default Login;

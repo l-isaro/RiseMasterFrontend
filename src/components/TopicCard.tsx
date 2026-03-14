@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 import { Topic } from "@/types";
 import { useNavigate } from "react-router-dom";
+import { getNextProblem } from "../data/api.js";
+import { on } from "events";
 
 interface TopicCardProps {
   topic: Topic;
@@ -11,28 +13,53 @@ interface TopicCardProps {
 const TopicCard = ({ topic, index }: TopicCardProps) => {
   const navigate = useNavigate();
 
+  const handleClick = async () => {
+    try {
+      const userId = localStorage.getItem("user_id");
+
+      if (!userId) {
+        alert("User not found. Please register again.");
+        return;
+      }
+
+      const problem = await getNextProblem(userId);
+
+      localStorage.setItem("current_problem", JSON.stringify(problem));
+
+      navigate("/practice");
+    } catch (err) {
+      alert("Could not load practice problem.");
+      console.error(err);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08, duration: 0.4 }}
-      onClick={() => navigate("/practice")}
+      onClick={handleClick}
       className="group cursor-pointer rounded-xl border border-border bg-card p-5 shadow-card transition-all duration-300 hover:shadow-card-hover hover:-translate-y-0.5"
     >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">{topic.name}</h3>
-        <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-          topic.gain > 0.15 ? "bg-success/10 text-success" : "bg-primary/10 text-primary"
-        }`}>
-          <TrendingUp className="h-3 w-3" />
-          +{Math.round(topic.gain * 100)}%
+        <div
+          className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+            topic.gain > 0.15
+              ? "bg-success/10 text-success"
+              : "bg-primary/10 text-primary"
+          }`}
+        >
+          <TrendingUp className="h-3 w-3" />+{Math.round(topic.gain * 100)}%
         </div>
       </div>
 
       <div className="mb-3">
         <div className="mb-1 flex justify-between text-sm">
           <span className="text-muted-foreground">Mastery</span>
-          <span className="font-medium text-foreground">{Math.round(topic.mastery * 100)}%</span>
+          <span className="font-medium text-foreground">
+            {Math.round(topic.mastery * 100)}%
+          </span>
         </div>
         <div className="h-2.5 overflow-hidden rounded-full bg-secondary">
           <motion.div

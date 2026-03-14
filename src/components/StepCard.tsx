@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lightbulb, ChevronRight, Check, X } from "lucide-react";
 import { PracticeStep } from "@/types";
@@ -7,22 +7,88 @@ interface StepCardProps {
   step: PracticeStep;
   stepNumber: number;
   totalSteps: number;
-  onComplete: (correct: boolean) => void;
+  onComplete: (correct: boolean, hintsUsed: number) => void;
 }
 
-const StepCard = ({ step, stepNumber, totalSteps, onComplete }: StepCardProps) => {
+function normalizeText(s: string) {
+  return (s || "")
+    .toLowerCase()
+    .replace(/\s+/g, "") // remove spaces
+    .replace(/,/g, "") // remove commas
+    .replace(/×/g, "*") // normalize multiply symbol
+    .trim();
+}
+
+function isNumericLike(s: string) {
+  return /^-?\d+(\.\d+)?$/.test((s || "").trim());
+}
+
+function numericEqual(a: string, b: string, tolerance = 0.02) {
+  const na = Number(a);
+  const nb = Number(b);
+  if (Number.isNaN(na) || Number.isNaN(nb)) return false;
+  return Math.abs(na - nb) <= tolerance;
+}
+
+/**
+ * Allows correctAnswer to include multiple accepted variants separated by "|"
+ * Example: "k=ln(2)/3|ln(2)/3|0.231"
+ */
+function isAnswerCorrect(userAnswer: string, correctAnswer: string) {
+  const uaRaw = (userAnswer || "").trim();
+  const caRaw = (correctAnswer || "").trim();
+
+  if (!uaRaw || !caRaw) return false;
+
+  const accepted = caRaw
+    .split("|")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+  // If user typed a pure number, allow numeric tolerance matching against any numeric accepted answer
+  if (isNumericLike(uaRaw)) {
+    return accepted.some((acc) => {
+      if (isNumericLike(acc)) return numericEqual(uaRaw, acc);
+      // also allow them to type numeric approx when correct answer is symbolic
+      // e.g. correct: ln(2)/3, user: 0.231
+      return false;
+    });
+  }
+
+  const ua = normalizeText(uaRaw);
+
+  return accepted.some((acc) => {
+    const accNorm = normalizeText(acc);
+
+    // allow "k=" optional
+    const uaNoK = ua.replace(/^k=/, "");
+    const accNoK = accNorm.replace(/^k=/, "");
+
+    return ua === accNorm || uaNoK === accNoK;
+  });
+}
+
+const StepCard = ({
+  step,
+  stepNumber,
+  totalSteps,
+  onComplete,
+}: StepCardProps) => {
   const [answer, setAnswer] = useState("");
   const [hintsShown, setHintsShown] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
 
-  const hints = [step.hint1, step.hint2, step.hint3];
+  const hints = useMemo(
+    () => [step.hint1, step.hint2, step.hint3].filter(Boolean),
+    [step],
+  );
 
   const handleSubmit = () => {
-    const correct = answer.trim().length > 0;
+    const correct = isAnswerCorrect(answer, step.correctAnswer);
     setIsCorrect(correct);
     setSubmitted(true);
-    setTimeout(() => onComplete(correct), 1500);
+    setTimeout(() => onComplete(correct, hintsShown), 1500);
   };
 
   return (
@@ -35,8 +101,12 @@ const StepCard = ({ step, stepNumber, totalSteps, onComplete }: StepCardProps) =
       {/* Progress */}
       <div className="mb-5">
         <div className="mb-2 flex items-center justify-between text-sm">
-          <span className="font-medium text-muted-foreground">Step {stepNumber} of {totalSteps}</span>
-          <span className="font-semibold text-primary">{Math.round((stepNumber / totalSteps) * 100)}%</span>
+          <span className="font-medium text-muted-foreground">
+            Step {stepNumber} of {totalSteps}
+          </span>
+          <span className="font-semibold text-primary">
+            {Math.round((stepNumber / totalSteps) * 100)}%
+          </span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-secondary">
           <motion.div
@@ -49,7 +119,9 @@ const StepCard = ({ step, stepNumber, totalSteps, onComplete }: StepCardProps) =
       </div>
 
       {/* Instruction */}
-      <p className="mb-4 text-lg font-medium text-foreground">{step.instruction}</p>
+      <p className="mb-4 text-lg font-medium text-foreground">
+        {step.instruction}
+      </p>
 
       {step.latex && (
         <div className="mb-4 rounded-lg bg-secondary/50 p-3 text-center font-mono text-lg text-foreground">
@@ -64,7 +136,9 @@ const StepCard = ({ step, stepNumber, totalSteps, onComplete }: StepCardProps) =
             type="text"
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && answer.trim() && handleSubmit()}
+            onKeyDown={(e) =>
+              e.key === "Enter" && answer.trim() && handleSubmit()
+            }
             placeholder="Type your answer here..."
             className="mb-4 w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
@@ -80,7 +154,7 @@ const StepCard = ({ step, stepNumber, totalSteps, onComplete }: StepCardProps) =
               Submit <ChevronRight className="h-4 w-4" />
             </motion.button>
 
-            {hintsShown < 3 && (
+            {hintsShown < hints.length && (
               <button
                 onClick={() => setHintsShown((h) => h + 1)}
                 className="flex items-center gap-1.5 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent/10"
@@ -119,14 +193,16 @@ const StepCard = ({ step, stepNumber, totalSteps, onComplete }: StepCardProps) =
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className={`flex items-center gap-3 rounded-lg p-4 ${
-            isCorrect ? "bg-success/10 text-success" : "bg-accent/10 text-accent"
+            isCorrect
+              ? "bg-success/10 text-success"
+              : "bg-accent/10 text-accent"
           }`}
         >
           {isCorrect ? (
             <>
               <Check className="h-6 w-6" />
               <div>
-                <p className="font-semibold">Yes! You're killing it 🔥</p>
+                <p className="font-semibold">Nice! That’s correct ✅</p>
                 <p className="text-sm opacity-80">Moving to the next step...</p>
               </div>
             </>
@@ -134,8 +210,13 @@ const StepCard = ({ step, stepNumber, totalSteps, onComplete }: StepCardProps) =
             <>
               <X className="h-6 w-6" />
               <div>
-                <p className="font-semibold">Super common mistake — no worries!</p>
-                <p className="text-sm opacity-80">The answer was: {step.correctAnswer}</p>
+                <p className="font-semibold">Close — let’s fix it together.</p>
+                <p className="text-sm opacity-80">
+                  A correct answer could be:{" "}
+                  <span className="font-mono">
+                    {step.correctAnswer.split("|")[0]}
+                  </span>
+                </p>
               </div>
             </>
           )}

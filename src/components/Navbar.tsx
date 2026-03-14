@@ -42,7 +42,8 @@ const Navbar = () => {
         <div className="flex items-center gap-4">
           <div className="hidden items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent sm:flex">
             <Flame className="h-4 w-4" />
-            {mockUser.streak} day streak
+            {/* {mockUser.streak}  */}
+            {0} day streak
           </div>
           <button className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
             <LogOut className="h-4 w-4" />
