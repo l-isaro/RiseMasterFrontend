@@ -8,7 +8,7 @@ export const mockUser: User = {
   classLevel: "S6",
   overallMastery: 0.64,
   overallGain: 0.21,
-  streak: 0,
+  streak: 7,
   totalProblems: 19,
 };
 

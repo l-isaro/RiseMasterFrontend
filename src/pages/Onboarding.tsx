@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, ArrowRight } from "lucide-react";
+import { BookOpen, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../data/api.js";
 import { useToast } from "@/hooks/use-toast.js";
@@ -10,11 +10,14 @@ const Onboarding = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [classLevel, setClassLevel] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const { toast } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    setIsLoading(true);
 
     try {
       const user = await registerUser({
@@ -35,6 +38,8 @@ const Onboarding = () => {
         description: err?.message || "Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -123,12 +128,24 @@ const Onboarding = () => {
           </div>
 
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: isLoading ? 1 : 1.02 }}
+            whileTap={{ scale: isLoading ? 1 : 0.98 }}
             type="submit"
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl gradient-primary px-6 py-3.5 text-lg font-semibold text-primary-foreground shadow-sm"
+            disabled={isLoading}
+            className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl gradient-primary px-6 py-3.5 text-lg font-semibold text-primary-foreground shadow-sm ${
+              isLoading ? "opacity-80 cursor-not-allowed" : ""
+            }`}
           >
-            Let's Start Learning! <ArrowRight className="h-5 w-5" />
+            {isLoading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Logging in...
+              </>
+            ) : (
+              <>
+                Let's Start Learning! <ArrowRight className="h-5 w-5" />
+              </>
+            )}
           </motion.button>
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
@@ -137,7 +154,7 @@ const Onboarding = () => {
               onClick={() => navigate("/login")}
               className="font-semibold text-primary hover:underline"
             >
-              Log in
+              logins
             </button>
           </p>
         </form>
