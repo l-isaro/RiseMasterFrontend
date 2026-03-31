@@ -40,7 +40,7 @@ describe("Dashboard Page", () => {
     expect(
       screen.getAllByText(/overall mastery/i).length,
     ).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/^mastery$/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/^improvement$/i)).toBeInTheDocument();
     expect(
       screen.getAllByText(/problems solved/i).length,
     ).toBeGreaterThanOrEqual(1);

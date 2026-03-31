@@ -6,6 +6,7 @@ import MasteryRing from "@/components/MasteryRing";
 import { mockTopics } from "@/data/mockData";
 import {
   getMastery,
+  getImprovement,
   getInteractionCount,
   getGrowthGrade,
   getTotalProblemsCompleted,
@@ -30,13 +31,13 @@ const Progress = () => {
     const timeoutId = window.setTimeout(() => {
       const loadedTopics = mockTopics.map((t) => {
         const bktMastery = getMastery(t.id);
-        const demoGain = Number(localStorage.getItem(`demo_gain_${t.id}`) || "0");
+        const improvement = getImprovement(t.id);
         const interactionsCount = getInteractionCount(t.id);
         return {
           id: t.id,
           name: t.name,
           mastery: bktMastery,
-          gain: demoGain,
+          gain: improvement,
           interactionsCount,
         };
       });

@@ -24,17 +24,8 @@ const TopicCard = ({ topic, index }: TopicCardProps) => {
       onClick={handleClick}
       className="group cursor-pointer rounded-xl border border-border bg-card p-5 shadow-card transition-all duration-300 hover:shadow-card-hover hover:-translate-y-0.5"
     >
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4">
         <h3 className="text-lg font-semibold text-foreground">{topic.name}</h3>
-        <div
-          className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-            topic.gain > 0.15
-              ? "bg-success/10 text-success"
-              : "bg-primary/10 text-primary"
-          }`}
-        >
-          <TrendingUp className="h-3 w-3" />+{Math.round(topic.gain * 100)}%
-        </div>
       </div>
 
       <div className="mb-3">
@@ -54,9 +45,11 @@ const TopicCard = ({ topic, index }: TopicCardProps) => {
         </div>
       </div>
 
-      <p className="text-sm text-muted-foreground group-hover:text-primary transition-colors">
-        Start practicing →
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground group-hover:text-primary transition-colors">
+          Start practicing →
+        </p>
+      </div>
     </motion.div>
   );
 };

@@ -27,18 +27,37 @@ export interface BKTParams {
   pS: number; // P(Slip)
 }
 
-/** Reasonable defaults tuned by topic difficulty (mimics pyBKT fitted values). */
+/**
+ * Reasonable defaults tuned by topic difficulty (mimics pyBKT fitted values).
+ *
+ * P(T) is moderate (~0.015) because interactions are step-level (each problem
+ * has ~6 steps). P(G) ≈ 0.42 keeps evidence from each correct step moderate —
+ * individual steps within a scaffolded problem are correlated, so guessing one
+ * step right is easier than guessing a whole problem. P(S) ≈ 0.28 softens the
+ * penalty of a single wrong step — even learners who "know" the skill can slip.
+ *
+ * Target curve (per 6-step problem):
+ *   6/6 correct ≈ 65-70%, 5/6 ≈ 40-45%, 4/6 ≈ 20%,
+ *   two perfect problems ≈ 98%, sustained practice needed for 85%+.
+ *
+ * P(S) is set relatively high (~0.28) so that a single wrong step doesn't
+ * destroy mastery — "even learners can slip". P(G) ≈ 0.42 keeps correct-step
+ * evidence moderate. P(T) ≈ 0.015 provides a steady learning boost per step.
+ *
+ * Harder topics (trig, calculus, complex) have slightly lower pT and higher
+ * pG to reflect more room for partial-guessing and slower learning.
+ */
 export const DEFAULT_BKT_PARAMS: Record<string, BKTParams> = {
-  geometric_progression: { pL0: 0.1, pT: 0.2, pG: 0.2, pS: 0.1 },
-  exponentials: { pL0: 0.08, pT: 0.18, pG: 0.22, pS: 0.12 },
-  sequences: { pL0: 0.12, pT: 0.22, pG: 0.2, pS: 0.1 },
-  trig: { pL0: 0.07, pT: 0.15, pG: 0.25, pS: 0.12 },
-  calculus: { pL0: 0.05, pT: 0.12, pG: 0.25, pS: 0.15 },
-  complex: { pL0: 0.08, pT: 0.16, pG: 0.22, pS: 0.13 },
-  stats: { pL0: 0.1, pT: 0.2, pG: 0.2, pS: 0.1 },
+  geometric_progression: { pL0: 0.05, pT: 0.015, pG: 0.42, pS: 0.28 },
+  exponentials: { pL0: 0.04, pT: 0.013, pG: 0.44, pS: 0.28 },
+  sequences: { pL0: 0.05, pT: 0.015, pG: 0.42, pS: 0.28 },
+  trig: { pL0: 0.03, pT: 0.012, pG: 0.45, pS: 0.3 },
+  calculus: { pL0: 0.02, pT: 0.01, pG: 0.46, pS: 0.3 },
+  complex: { pL0: 0.04, pT: 0.013, pG: 0.44, pS: 0.28 },
+  stats: { pL0: 0.05, pT: 0.015, pG: 0.42, pS: 0.28 },
 };
 
-const FALLBACK_PARAMS: BKTParams = { pL0: 0.1, pT: 0.18, pG: 0.22, pS: 0.12 };
+const FALLBACK_PARAMS: BKTParams = { pL0: 0.05, pT: 0.015, pG: 0.42, pS: 0.28 };
 
 export function getParams(skillName: string): BKTParams {
   return DEFAULT_BKT_PARAMS[skillName] ?? FALLBACK_PARAMS;
@@ -188,6 +207,18 @@ export function getAllMastery(): Record<string, number> {
 /** Get interaction count for a skill. */
 export function getInteractionCount(skillName: string): number {
   return getHistory(skillName).length;
+}
+
+/**
+ * Get the improvement for a skill: how much mastery increased from baseline.
+ * Returns 0 if no practice has been done.
+ */
+export function getImprovement(skillName: string): number {
+  const history = getHistory(skillName);
+  if (history.length === 0) return 0;
+  const params = getParams(skillName);
+  const current = getMastery(skillName);
+  return Math.max(0, current - params.pL0);
 }
 
 /** Get the number of fully completed problems for a skill. */

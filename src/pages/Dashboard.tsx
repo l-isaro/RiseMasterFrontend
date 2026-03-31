@@ -7,6 +7,7 @@ import TopicCard from "@/components/TopicCard";
 import { mockTopics } from "@/data/mockData";
 import {
   getMastery,
+  getImprovement,
   getInteractionCount,
   getGrowthGrade,
   getTotalProblemsCompleted,
@@ -30,9 +31,7 @@ const Dashboard = () => {
 
       const mergedTopics = mockTopics.map((t) => {
         const bktMastery = getMastery(t.id);
-        const demoGain = Number(
-          localStorage.getItem(`demo_gain_${t.id}`) || "0",
-        );
+        const improvement = getImprovement(t.id);
         const interactionsCount = getInteractionCount(t.id);
 
         return {
@@ -40,7 +39,7 @@ const Dashboard = () => {
           name: t.name,
           icon: t.icon,
           mastery: bktMastery,
-          gain: demoGain,
+          gain: improvement,
           color: t.color,
           interactionsCount,
           availableCount: 3,
@@ -144,9 +143,9 @@ const Dashboard = () => {
             },
             {
               icon: TrendingUp,
-              label: "Mastery",
-              value: `${Math.round(growth.masteryGrowth * 100)}%`,
-              sublabel: "how well you've learned",
+              label: "Improvement",
+              value: `+${Math.round(overallGain * 100)}%`,
+              sublabel: "mastery gained from practice",
               bgClass: "bg-primary/10 text-primary",
             },
             {
