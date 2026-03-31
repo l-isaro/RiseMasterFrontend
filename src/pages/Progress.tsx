@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, Target, Award, Zap, LayoutGrid } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -12,6 +12,8 @@ import {
   type GrowthBreakdown,
 } from "@/lib/bkt";
 
+const SIMULATED_FETCH_DELAY_MS = 450;
+
 type TopicRow = {
   id: string;
   name: string;
@@ -21,19 +23,29 @@ type TopicRow = {
 };
 
 const Progress = () => {
-  const topics: TopicRow[] = useMemo(() => {
-    return mockTopics.map((t) => {
-      const bktMastery = getMastery(t.id);
-      const demoGain = Number(localStorage.getItem(`demo_gain_${t.id}`) || "0");
-      const interactionsCount = getInteractionCount(t.id);
-      return {
-        id: t.id,
-        name: t.name,
-        mastery: bktMastery,
-        gain: demoGain,
-        interactionsCount,
-      };
-    });
+  const [topics, setTopics] = useState<TopicRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const loadedTopics = mockTopics.map((t) => {
+        const bktMastery = getMastery(t.id);
+        const demoGain = Number(localStorage.getItem(`demo_gain_${t.id}`) || "0");
+        const interactionsCount = getInteractionCount(t.id);
+        return {
+          id: t.id,
+          name: t.name,
+          mastery: bktMastery,
+          gain: demoGain,
+          interactionsCount,
+        };
+      });
+
+      setTopics(loadedTopics);
+      setLoading(false);
+    }, SIMULATED_FETCH_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   const allTopicIds = useMemo(() => mockTopics.map((t) => t.id), []);
@@ -53,6 +65,17 @@ const Progress = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [allTopicIds, topics],
   );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="mx-auto max-w-7xl px-6 py-8">
+          <p className="text-muted-foreground">Loading progress...</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

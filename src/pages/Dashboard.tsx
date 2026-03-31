@@ -13,6 +13,8 @@ import {
   type GrowthBreakdown,
 } from "@/lib/bkt";
 
+const SIMULATED_FETCH_DELAY_MS = 450;
+
 const Dashboard = () => {
   const navigate = useNavigate();
 
@@ -22,29 +24,34 @@ const Dashboard = () => {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const storedName = localStorage.getItem("user_name");
-    if (storedName) setUserName(storedName);
+    const timeoutId = window.setTimeout(() => {
+      const storedName = localStorage.getItem("user_name");
+      if (storedName) setUserName(storedName);
 
-    // Build topic list from mock topics, enriched with BKT mastery
-    const mergedTopics = mockTopics.map((t, index) => {
-      const bktMastery = getMastery(t.id);
-      const demoGain = Number(localStorage.getItem(`demo_gain_${t.id}`) || "0");
-      const interactionsCount = getInteractionCount(t.id);
+      const mergedTopics = mockTopics.map((t) => {
+        const bktMastery = getMastery(t.id);
+        const demoGain = Number(
+          localStorage.getItem(`demo_gain_${t.id}`) || "0",
+        );
+        const interactionsCount = getInteractionCount(t.id);
 
-      return {
-        id: t.id,
-        name: t.name,
-        icon: t.icon,
-        mastery: bktMastery,
-        gain: demoGain,
-        color: t.color,
-        interactionsCount,
-        availableCount: 3, // 3 questions per topic
-      };
-    });
+        return {
+          id: t.id,
+          name: t.name,
+          icon: t.icon,
+          mastery: bktMastery,
+          gain: demoGain,
+          color: t.color,
+          interactionsCount,
+          availableCount: 3,
+        };
+      });
 
-    setTopics(mergedTopics);
-    setLoading(false);
+      setTopics(mergedTopics);
+      setLoading(false);
+    }, SIMULATED_FETCH_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   const allTopicIds = useMemo(() => mockTopics.map((t) => t.id), []);
@@ -146,7 +153,7 @@ const Dashboard = () => {
               icon: Sparkles,
               label: "Problems Solved",
               value: totalProblems.toString(),
-              sublabel: "total interactions",
+              sublabel: "completed practice problems",
               bgClass: "bg-primary/10 text-primary",
             },
           ].map((stat, i) => (

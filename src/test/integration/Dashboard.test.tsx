@@ -24,6 +24,8 @@ describe("Dashboard Page", () => {
   it("renders stat cards and topics using BKT mastery", async () => {
     renderWithProviders(<Dashboard />);
 
+    expect(screen.getByText(/loading dashboard/i)).toBeInTheDocument();
+
     // Greeting uses the first name from localStorage ("Alice Uwase" -> "Alice")
     await waitFor(() => {
       expect(
@@ -38,9 +40,7 @@ describe("Dashboard Page", () => {
     expect(
       screen.getAllByText(/overall mastery/i).length,
     ).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getAllByText(/mastery growth/i).length,
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/^mastery$/i).length).toBeGreaterThanOrEqual(1);
     expect(
       screen.getAllByText(/problems solved/i).length,
     ).toBeGreaterThanOrEqual(1);
