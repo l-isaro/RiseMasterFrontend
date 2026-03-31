@@ -1,143 +1,58 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, CheckCircle, Target } from "lucide-react";
+import { TrendingUp, Target, Award, Zap, LayoutGrid } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import MasteryRing from "@/components/MasteryRing";
-import { getUserMastery } from "../data/api.js"; // adjust if your api path differs
-import { useToast } from "@/hooks/use-toast";
+import { mockTopics } from "@/data/mockData";
+import {
+  getMastery,
+  getInteractionCount,
+  getGrowthGrade,
+  getTotalProblemsCompleted,
+  type GrowthBreakdown,
+} from "@/lib/bkt";
 
 type TopicRow = {
   id: string;
   name: string;
   mastery: number; // 0..1
-  gain: number; // can be negative/positive, 0..1-ish
+  gain: number; // 0..1
   interactionsCount: number;
 };
 
 const Progress = () => {
-  const { toast } = useToast();
+  const topics: TopicRow[] = useMemo(() => {
+    return mockTopics.map((t) => {
+      const bktMastery = getMastery(t.id);
+      const demoGain = Number(localStorage.getItem(`demo_gain_${t.id}`) || "0");
+      const interactionsCount = getInteractionCount(t.id);
+      return {
+        id: t.id,
+        name: t.name,
+        mastery: bktMastery,
+        gain: demoGain,
+        interactionsCount,
+      };
+    });
+  }, []);
 
-  const [topics, setTopics] = useState<TopicRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const userId = localStorage.getItem("user_id");
-        if (!userId) {
-          setError("No user found. Please register again.");
-          setLoading(false);
-          return;
-        }
-
-        const data = await getUserMastery(userId);
-        const masteryList = data.mastery || [];
-
-        const formatted: TopicRow[] = masteryList.map((m) => ({
-          id: m.skill_name,
-          name: formatSkillName(m.skill_name),
-          mastery: clamp01((m.mastery_prob ?? 0) / 100),
-          gain: (m.delta ?? 0) / 100,
-          interactionsCount: m.interactions_count ?? 0,
-        }));
-
-        // ---- DEMO injection (localStorage fallback) ----
-        const DEMO_SKILL = "geometric_progression"; // <-- match your demo topicKey/skill_name
-
-        const demoMastery = Number(
-          localStorage.getItem(`demo_mastery_${DEMO_SKILL}`) || "0",
-        );
-        const demoGain = Number(
-          localStorage.getItem(`demo_gain_${DEMO_SKILL}`) || "0",
-        );
-
-        if (demoMastery > 0) {
-          const idx = formatted.findIndex((t) => t.id === DEMO_SKILL);
-
-          const demoRow: TopicRow = {
-            id: DEMO_SKILL,
-            name: "Sequences", // or "Geometric Progression" if you prefer
-            mastery: clamp01(demoMastery),
-            gain: demoGain,
-            interactionsCount: Math.max(
-              1,
-              idx >= 0 ? formatted[idx].interactionsCount : 1,
-            ),
-          };
-
-          if (idx >= 0) {
-            // Override existing backend entry with demo values
-            formatted[idx] = { ...formatted[idx], ...demoRow };
-          } else {
-            // Insert at top so it's visible
-            formatted.unshift(demoRow);
-          }
-        }
-        // -----------------------------------------------
-
-        setTopics(formatted);
-
-        setTopics(formatted);
-      } catch (err) {
-        const msg = err?.message || "Failed to load progress.";
-        setError(msg);
-
-        toast({
-          title: "Could not load progress",
-          description: msg,
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, [toast]);
+  const allTopicIds = useMemo(() => mockTopics.map((t) => t.id), []);
+  const growth: GrowthBreakdown = useMemo(
+    () => getGrowthGrade(allTopicIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allTopicIds, topics],
+  );
 
   const overallMastery = useMemo(() => {
     if (topics.length === 0) return 0;
-    const avg = topics.reduce((sum, t) => sum + t.mastery, 0) / topics.length;
-    return clamp01(avg);
+    return topics.reduce((sum, t) => sum + t.mastery, 0) / topics.length;
   }, [topics]);
 
-  const overallGain = useMemo(() => {
-    if (topics.length === 0) return 0;
-    // Demo-friendly: average gain across skills
-    return topics.reduce((sum, t) => sum + t.gain, 0) / topics.length;
-  }, [topics]);
-
-  const totalSolved = useMemo(() => {
-    // DEMO: start at 0 and only become 1 after first completed demo problem
-    const DEMO_SKILL = "geometric_progression"; // must match topicKey
-    return Number(localStorage.getItem(`demo_solved_${DEMO_SKILL}`) || "0");
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <main className="mx-auto max-w-7xl px-6 py-8">
-          <p className="text-muted-foreground">Loading progress...</p>
-        </main>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <main className="mx-auto max-w-7xl px-6 py-8">
-          <h1 className="mb-2 text-2xl font-bold text-foreground">
-            Your Progress 📈
-          </h1>
-          <p className="text-red-500">{error}</p>
-        </main>
-      </div>
-    );
-  }
+  const totalProblems = useMemo(
+    () => getTotalProblemsCompleted(allTopicIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allTopicIds, topics],
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -155,7 +70,7 @@ const Progress = () => {
           </p>
         </motion.div>
 
-        {/* Overall stats */}
+        {/* Top stats row */}
         <div className="mb-8 grid gap-6 md:grid-cols-3">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -177,13 +92,18 @@ const Progress = () => {
             transition={{ delay: 0.15 }}
             className="flex flex-col items-center justify-center rounded-xl border border-border bg-card p-6 shadow-card"
           >
-            <div className="mb-2 inline-flex rounded-xl bg-success/10 p-3 text-success">
-              <TrendingUp className="h-8 w-8" />
+            <div className="mb-2 inline-flex rounded-xl bg-accent/10 p-3 text-accent">
+              <Award className="h-8 w-8" />
             </div>
             <p className="text-4xl font-bold text-foreground">
-              {formatSignedPercent(overallGain)}
+              {growth.grade > 0 ? `${growth.letter}` : "—"}
             </p>
-            <p className="text-sm text-muted-foreground">Total Improvement</p>
+            <p className="text-sm text-muted-foreground">Improvement Grade</p>
+            {growth.grade > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {growth.grade}/100
+              </p>
+            )}
           </motion.div>
 
           <motion.div
@@ -193,22 +113,97 @@ const Progress = () => {
             className="flex flex-col items-center justify-center rounded-xl border border-border bg-card p-6 shadow-card"
           >
             <div className="mb-2 inline-flex rounded-xl bg-primary/10 p-3 text-primary">
-              <CheckCircle className="h-8 w-8" />
+              <TrendingUp className="h-8 w-8" />
             </div>
-            <p className="text-4xl font-bold text-foreground">{totalSolved}</p>
-            <p className="text-sm text-muted-foreground">
-              {/** This is closer to "Steps Completed" in your data model */}
-              Problems Solved
+            <p className="text-4xl font-bold text-foreground">
+              {totalProblems}
             </p>
+            <p className="text-sm text-muted-foreground">Problems Completed</p>
           </motion.div>
         </div>
+
+        {/* Improvement breakdown */}
+        <h2 className="mb-4 text-xl font-bold text-foreground">
+          Improvement Breakdown
+        </h2>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          {[
+            {
+              icon: TrendingUp,
+              label: "Mastery Growth",
+              value: growth.masteryGrowth,
+              desc: "How well you've learned",
+              weight: "40%",
+            },
+            {
+              icon: Zap,
+              label: "Consistency",
+              value: growth.consistency,
+              desc: "Practice regularly",
+              weight: "20%",
+            },
+            {
+              icon: Target,
+              label: "Persistence",
+              value: growth.persistence,
+              desc: "Retry & use fewer hints",
+              weight: "20%",
+            },
+            {
+              icon: LayoutGrid,
+              label: "Breadth",
+              value: growth.breadth,
+              desc: "Try all topics",
+              weight: "20%",
+            },
+          ].map((dim, i) => (
+            <motion.div
+              key={dim.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 + i * 0.06 }}
+              className="rounded-xl border border-border bg-card p-4 shadow-card"
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <div className="inline-flex rounded-lg bg-primary/10 p-1.5 text-primary">
+                  <dim.icon className="h-4 w-4" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">
+                  {dim.label}
+                </span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {dim.weight}
+                </span>
+              </div>
+              <div className="mb-1 h-2 overflow-hidden rounded-full bg-secondary">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.round(dim.value * 100)}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  className="h-full rounded-full bg-primary"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">{dim.desc}</p>
+                <span className="text-sm font-bold text-foreground">
+                  {Math.round(dim.value * 100)}%
+                </span>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
 
         {/* Topic breakdown */}
         <h2 className="mb-4 text-xl font-bold text-foreground">
           Topic Breakdown
         </h2>
 
-        {topics.length === 0 ? (
+        {topics.every((t) => t.interactionsCount === 0) ? (
           <p className="text-muted-foreground">
             No mastery data yet. Try practicing a problem first.
           </p>
@@ -246,13 +241,17 @@ const Progress = () => {
                   </div>
                 </div>
 
-                <div
-                  className={`flex items-center gap-1 text-sm font-semibold ${
-                    topic.gain >= 0 ? "text-success" : "text-destructive"
-                  }`}
-                >
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  {formatSignedPercent(topic.gain)}
+                <div className="flex flex-col items-end text-sm">
+                  <span
+                    className={`font-semibold ${
+                      topic.gain > 0 ? "text-success" : "text-muted-foreground"
+                    }`}
+                  >
+                    {topic.gain > 0 ? `+${Math.round(topic.gain * 100)}%` : "—"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {topic.interactionsCount} steps
+                  </span>
                 </div>
               </motion.div>
             ))}
@@ -262,21 +261,5 @@ const Progress = () => {
     </div>
   );
 };
-
-function formatSkillName(skillName: string) {
-  return skillName
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
-function clamp01(n: number) {
-  return Math.max(0, Math.min(1, n));
-}
-
-function formatSignedPercent(value: number) {
-  const pct = Math.round(value * 100);
-  return `${pct >= 0 ? "+" : ""}${pct}%`;
-}
 
 export default Progress;

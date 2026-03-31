@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, Flame, Target, Sparkles } from "lucide-react";
+import { TrendingUp, Target, Sparkles, Award } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
-import MasteryRing from "@/components/MasteryRing";
 import TopicCard from "@/components/TopicCard";
+import { mockTopics } from "@/data/mockData";
 import {
-  getUserMastery,
-  getNextProblem,
-  getTopics,
-  getUserStats,
-} from "../data/api.js";
+  getMastery,
+  getInteractionCount,
+  getGrowthGrade,
+  getTotalProblemsCompleted,
+  type GrowthBreakdown,
+} from "@/lib/bkt";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -19,108 +20,39 @@ const Dashboard = () => {
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [solved, setSolved] = useState(0);
 
   useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        const userId = localStorage.getItem("user_id");
-        const storedName = localStorage.getItem("user_name");
+    const storedName = localStorage.getItem("user_name");
+    if (storedName) setUserName(storedName);
 
-        if (storedName) setUserName(storedName);
+    // Build topic list from mock topics, enriched with BKT mastery
+    const mergedTopics = mockTopics.map((t, index) => {
+      const bktMastery = getMastery(t.id);
+      const demoGain = Number(localStorage.getItem(`demo_gain_${t.id}`) || "0");
+      const interactionsCount = getInteractionCount(t.id);
 
-        if (!userId) {
-          setError("No user found. Please register first.");
-          setLoading(false);
-          return;
-        }
+      return {
+        id: t.id,
+        name: t.name,
+        icon: t.icon,
+        mastery: bktMastery,
+        gain: demoGain,
+        color: t.color,
+        interactionsCount,
+        availableCount: 3, // 3 questions per topic
+      };
+    });
 
-        // Load in parallel
-        const [topicsRes, masteryRes, statsRes] = await Promise.allSettled([
-          getTopics(userId),
-          getUserMastery(userId),
-          getUserStats(userId),
-        ]);
-
-        // Topics are the base list
-        let availableTopics = [];
-        if (topicsRes.status === "fulfilled") {
-          availableTopics = topicsRes.value.topics || [];
-          // DEMO: ensure GP appears even if DB seed is missing it
-          const demoSkill = "geometric_progression";
-          const alreadyHasDemo = availableTopics.some(
-            (t) => t.skill_name === demoSkill,
-          );
-
-          if (!alreadyHasDemo) {
-            availableTopics.unshift({
-              topic: "Sequences",
-              skill_name: demoSkill,
-              available_count: 2,
-            });
-          }
-        } else {
-          throw new Error(topicsRes.reason?.message || "Failed to load topics");
-        }
-
-        console.log("Available topics:", availableTopics);
-
-        // Mastery is optional (might be empty)
-        const masteryList =
-          masteryRes.status === "fulfilled"
-            ? masteryRes.value.mastery || []
-            : [];
-
-        // Build a lookup by skill_name
-        const masteryBySkill = {};
-        for (const m of masteryList) {
-          masteryBySkill[m.skill_name] = m;
-        }
-
-        // Merge into topic cards
-        const mergedTopics = availableTopics.map((t, index) => {
-          const m = masteryBySkill[t.skill_name];
-
-          const demoMastery = Number(
-            localStorage.getItem(`demo_mastery_${t.skill_name}`) || "0",
-          );
-          const demoGain = Number(
-            localStorage.getItem(`demo_gain_${t.skill_name}`) || "0",
-          );
-
-          const masteryValue =
-            m?.mastery_prob != null ? m.mastery_prob / 100 : demoMastery;
-
-          const gainValue = m?.delta != null ? m.delta / 100 : demoGain;
-
-          return {
-            id: `${t.skill_name}-${index}`,
-            name: t.topic || formatSkillName(t.skill_name), // show "Calculus" etc.
-            skill_name: t.skill_name,
-            mastery: masteryValue,
-            gain: gainValue,
-            interactionsCount: m?.interactions_count ?? 0,
-            availableCount: t.available_count ?? 0,
-          };
-        });
-
-        setTopics(mergedTopics);
-
-        // Stats endpoint (for problems solved)
-        if (statsRes.status === "fulfilled") {
-          setSolved(statsRes.value.problems_solved || 0);
-        } else {
-          setSolved(0);
-        }
-      } catch (err) {
-        setError(err.message || "Failed to load dashboard");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadDashboard();
+    setTopics(mergedTopics);
+    setLoading(false);
   }, []);
+
+  const allTopicIds = useMemo(() => mockTopics.map((t) => t.id), []);
+  const growth: GrowthBreakdown = useMemo(
+    () => getGrowthGrade(allTopicIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [topics, allTopicIds],
+  );
 
   const overallMastery =
     topics.length > 0
@@ -132,9 +64,10 @@ const Dashboard = () => {
       ? topics.reduce((sum, topic) => sum + topic.gain, 0) / topics.length
       : 0;
 
-  const totalProblems = topics.reduce(
-    (sum, topic) => sum + (topic.interactionsCount || 0),
-    0,
+  const totalProblems = useMemo(
+    () => getTotalProblemsCompleted(allTopicIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [topics, allTopicIds],
   );
 
   const bestTopic = useMemo(() => {
@@ -142,20 +75,8 @@ const Dashboard = () => {
     return [...topics].sort((a, b) => b.gain - a.gain)[0];
   }, [topics]);
 
-  const handleStartPractice = async () => {
-    try {
-      const userId = localStorage.getItem("user_id");
-      if (!userId) {
-        alert("No user found. Please register first.");
-        return;
-      }
-
-      const problem = await getNextProblem(userId);
-      localStorage.setItem("current_problem", JSON.stringify(problem));
-      navigate("/practice");
-    } catch (err) {
-      alert(err.message || "Could not start practice");
-    }
+  const handleStartPractice = () => {
+    navigate("/practice");
   };
 
   if (loading) {
@@ -200,31 +121,32 @@ const Dashboard = () => {
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
-              icon: TrendingUp,
-              label: "Overall Gain",
-              value: `+${Math.round(overallGain * 100)}%`,
-              sublabel: "from mastery data",
-              bgClass: "bg-primary/10 text-primary",
+              icon: Award,
+              label: "Improvement Grade",
+              value:
+                growth.grade > 0 ? `${growth.letter} (${growth.grade}%)` : "—",
+              sublabel: "growth, consistency & effort",
+              bgClass: "bg-accent/10 text-accent",
             },
             {
               icon: Target,
-              label: "Mastery",
+              label: "Overall Mastery",
               value: `${Math.round(overallMastery * 100)}%`,
               sublabel: "across all topics",
               bgClass: "bg-success/10 text-success",
             },
             {
-              icon: Flame,
-              label: "Streak",
-              value: `0 days`,
-              sublabel: "placeholder for now",
-              bgClass: "bg-accent/10 text-accent",
+              icon: TrendingUp,
+              label: "Mastery",
+              value: `${Math.round(growth.masteryGrowth * 100)}%`,
+              sublabel: "how well you've learned",
+              bgClass: "bg-primary/10 text-primary",
             },
             {
               icon: Sparkles,
               label: "Problems Solved",
-              value: solved.toString(),
-              sublabel: "distinct correct problems",
+              value: totalProblems.toString(),
+              sublabel: "total interactions",
               bgClass: "bg-primary/10 text-primary",
             },
           ].map((stat, i) => (
@@ -251,33 +173,6 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex items-center gap-6 rounded-xl border border-success/30 bg-success/5 p-6"
-          >
-            <MasteryRing
-              value={bestTopic ? bestTopic.mastery : 0}
-              size={90}
-              strokeWidth={8}
-              showPercentage
-            />
-            <div>
-              <p className="text-sm font-medium text-success">
-                Biggest win so far
-              </p>
-              <p className="text-xl font-bold text-foreground">
-                {bestTopic
-                  ? `${bestTopic.name}: +${Math.round(bestTopic.gain * 100)}%`
-                  : "No mastery data yet"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Keep practicing to grow your mastery
-              </p>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
             className="flex flex-col items-center justify-center rounded-xl gradient-primary p-6 text-center"
           >
@@ -296,12 +191,40 @@ const Dashboard = () => {
               Start Practice
             </motion.button>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="flex flex-col items-center justify-center rounded-xl border border-border bg-card p-6 text-center"
+          >
+            <div className="mb-2 inline-flex rounded-xl bg-accent/10 p-3 text-accent">
+              <Award className="h-8 w-8" />
+            </div>
+            <h3 className="mb-1 text-xl font-bold text-foreground">
+              {growth.grade > 0
+                ? `Grade: ${growth.letter} — ${growth.grade}/100`
+                : "No grade yet"}
+            </h3>
+            <p className="mb-4 text-sm text-muted-foreground">
+              See the full breakdown of your mastery, consistency, persistence &
+              breadth.
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => navigate("/progress")}
+              className="rounded-xl border border-border px-8 py-3 text-lg font-bold text-foreground transition-colors hover:bg-secondary"
+            >
+              View Progress
+            </motion.button>
+          </motion.div>
         </div>
 
         <div className="mb-4">
           <h2 className="text-xl font-bold text-foreground">Your Topics</h2>
           <p className="text-sm text-muted-foreground">
-            Pick a topic to practice — every little bit counts!
+            Pick a topic to practice. every little bit counts!
           </p>
         </div>
 
@@ -314,12 +237,5 @@ const Dashboard = () => {
     </div>
   );
 };
-
-function formatSkillName(skillName) {
-  return skillName
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
 export default Dashboard;

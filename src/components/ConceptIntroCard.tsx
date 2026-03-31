@@ -69,7 +69,7 @@ const ConceptIntroCard = ({
           <Sparkles className="h-5 w-5 text-accent-foreground" />
         </div>
         <h2 className="text-2xl font-bold text-foreground">
-          {title} — no need to panic!
+          {title}, no need to panic!
         </h2>
       </div>
 
@@ -78,7 +78,7 @@ const ConceptIntroCard = ({
       </p>
 
       <p className="mb-6 text-base text-foreground/80">
-        Don&apos;t worry if it looks confusing — we&apos;ll go through it
+        Don&apos;t worry if it looks confusing, we&apos;ll go through it
         together step by step.
       </p>
 

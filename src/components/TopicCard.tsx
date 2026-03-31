@@ -2,8 +2,6 @@ import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 import { Topic } from "@/types";
 import { useNavigate } from "react-router-dom";
-import { getNextProblem } from "../data/api.js";
-import { on } from "events";
 
 interface TopicCardProps {
   topic: Topic;
@@ -13,24 +11,9 @@ interface TopicCardProps {
 const TopicCard = ({ topic, index }: TopicCardProps) => {
   const navigate = useNavigate();
 
-  const handleClick = async () => {
-    try {
-      const userId = localStorage.getItem("user_id");
-
-      if (!userId) {
-        alert("User not found. Please register again.");
-        return;
-      }
-
-      const problem = await getNextProblem(userId);
-
-      localStorage.setItem("current_problem", JSON.stringify(problem));
-
-      navigate("/practice");
-    } catch (err) {
-      alert("Could not load practice problem.");
-      console.error(err);
-    }
+  const handleClick = () => {
+    // Navigate to practice with the topic id as a query param
+    navigate(`/practice?topic=${encodeURIComponent(topic.id)}`);
   };
 
   return (

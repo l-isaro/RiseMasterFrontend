@@ -1,103 +1,79 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BookOpen, Trophy, PartyPopper } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { mockQuestions } from "@/data/mockData";
+import { ArrowLeft, BookOpen, Trophy } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { questionsByTopic, allQuestions, mockTopics } from "@/data/mockData";
 import ConceptIntroCard from "@/components/ConceptIntroCard";
 import StepCard from "@/components/StepCard";
 import Navbar from "@/components/Navbar";
 import PracticeWelcomeCard from "@/components/PracticeWelcomeCard";
+import {
+  recordInteraction,
+  getMastery,
+  logSession,
+  getGrowthGrade,
+} from "@/lib/bkt";
 
 type Phase = "welcome" | "concept" | "steps" | "final" | "complete";
 
-function getSkillKey(skillName) {
-  return (skillName || "general").toLowerCase();
-}
-
-function getSpacedMultiplier(msSinceLast) {
-  const minutes = msSinceLast / (60 * 1000);
-  const hours = msSinceLast / (60 * 60 * 1000);
-  const days = msSinceLast / (24 * 60 * 60 * 1000);
-
-  if (minutes < 5) return 1.05;
-  if (minutes < 30) return 1.2;
-  if (hours < 6) return 1.35;
-  if (hours < 24) return 1.6;
-  if (days < 3) return 1.9;
-  return 2.1;
+/** Pick questions for the selected topic, or fall back to all questions. */
+function getQuestionsForTopic(topicId: string | null) {
+  if (topicId && questionsByTopic[topicId]) {
+    return questionsByTopic[topicId];
+  }
+  return allQuestions;
 }
 
 const PracticeSession = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const topicParam = searchParams.get("topic"); // e.g. /practice?topic=calculus
+
+  const questions = getQuestionsForTopic(topicParam);
+
   const [phase, setPhase] = useState<Phase>("welcome");
   const [currentStep, setCurrentStep] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  // const [mastery, setMastery] = useState(0.3);
-  // const startMastery = 0.3; // baseline for the session
 
   const [qIndex, setQIndex] = useState(0);
-  const question = mockQuestions[qIndex];
+  const question = questions[qIndex];
 
   const topicKey = question.topicKey || "demo_topic";
-  const masteryKey = `mastery_${topicKey}`;
-  const repeatKey = `repeats_${topicKey}_${question.id}`; // per-question repeats
 
-  const storedMastery = Number(localStorage.getItem(masteryKey) || "0.30");
-  const storedRepeats = Number(localStorage.getItem(repeatKey) || "0");
-
-  const [startMastery, setStartMastery] = useState(storedMastery);
-  const [mastery, setMastery] = useState(storedMastery);
-
-  const [repeatCount, setRepeatCount] = useState(storedRepeats); // how many times they repeated THIS question
-  const [usualGainPct, setUsualGainPct] = useState(0);
-  const [bonusGainPct, setBonusGainPct] = useState(0); // only >0 if repeatCount > 0
+  const [startMastery, setStartMastery] = useState(() => getMastery(topicKey));
+  const [mastery, setMastery] = useState(() => getMastery(topicKey));
 
   const gainPct = Math.round((mastery - startMastery) * 100);
 
   const handlePracticeAgain = () => {
-    const newRepeats = repeatCount + 1;
-    setRepeatCount(newRepeats);
-    localStorage.setItem(repeatKey, String(newRepeats));
-
-    // Reset session baseline so we measure improvement during this repeat too
+    // Reset session baseline so we measure improvement during this repeat
     setStartMastery(mastery);
-
     setPhase("concept");
     setCurrentStep(0);
     setCorrectCount(0);
-    setUsualGainPct(0);
-    setBonusGainPct(0);
   };
 
   const handleNextProblem = () => {
-    const nextIndex = (qIndex + 1) % mockQuestions.length;
+    const nextIndex = (qIndex + 1) % questions.length;
     setQIndex(nextIndex);
 
-    const nextQ = mockQuestions[nextIndex];
-    const nextRepeatKey = `repeats_${topicKey}_${nextQ.id}`;
-    const nextRepeats = Number(localStorage.getItem(nextRepeatKey) || "0");
-
-    setRepeatCount(nextRepeats);
-
-    // carry mastery forward to next question
-    setStartMastery(mastery);
+    // Carry mastery forward
+    const nextQ = questions[nextIndex];
+    const nextTopicKey = nextQ.topicKey || topicKey;
+    const nextMastery = getMastery(nextTopicKey);
+    setStartMastery(nextMastery);
+    setMastery(nextMastery);
 
     setPhase("concept");
     setCurrentStep(0);
     setCorrectCount(0);
-    setUsualGainPct(0);
-    setBonusGainPct(0);
   };
 
-  const handleStepComplete = (correct, hintsUsed = 0) => {
+  const handleStepComplete = (correct: boolean, hintsUsed: number = 0) => {
     if (correct) setCorrectCount((c) => c + 1);
 
-    // Usual mastery gain (first exposure learning)
-    const baseGain = correct ? 0.02 : 0.005;
-    const hintPenalty = Math.min(hintsUsed, 3) * 0.005;
-    const gain = Math.max(0, baseGain - hintPenalty);
-
-    setMastery((m) => Math.min(0.7, m + gain));
+    const newMastery = recordInteraction(topicKey, correct, hintsUsed);
+    setMastery(newMastery);
 
     if (currentStep < question.steps.length - 1) {
       setTimeout(() => setCurrentStep((s) => s + 1), 300);
@@ -107,44 +83,22 @@ const PracticeSession = () => {
   };
 
   const handleFinalSubmit = () => {
-    // compute usual gain from this run
-    const usualGain = mastery - startMastery;
-    const usualPct = repeatCount === 0 ? Math.round(usualGain * 100) : 0;
+    // Log session for growth tracking (consistency, breadth)
+    logSession(topicKey);
 
-    // Improvement bonus only if repeated
-    let bonus = 0;
-    if (repeatCount > 0) {
-      // small extra bonus to reward repetition (spaced repetition can be added later)
-      bonus = Math.min(0.08, 0.02 + repeatCount * 0.01); // grows slightly each repeat
-    }
+    // Persist demo values for Dashboard compatibility
+    localStorage.setItem(`demo_mastery_${topicKey}`, String(mastery));
+    const gainFraction = Math.max(0, mastery - startMastery);
+    localStorage.setItem(`demo_gain_${topicKey}`, String(gainFraction));
 
-    const finalMastery = Math.min(0.95, mastery + bonus);
-
-    setUsualGainPct(usualPct);
-    setBonusGainPct(repeatCount > 0 ? Math.round(bonus * 100) : 0);
-    setMastery(finalMastery);
-
-    // persist topic mastery
-    localStorage.setItem(masteryKey, String(finalMastery));
-
-    // ---- DEMO: problems solved count (only once per question, not on repeat) ----
-    const solvedKey = `demo_solved_${topicKey}`; // per topic solved count
-    const completedFlag = `demo_completed_${question.id}`; // per question completion flag
-
-    const alreadyCounted = localStorage.getItem(completedFlag) === "1";
-
-    if (!alreadyCounted) {
+    // Track solved count
+    const solvedKey = `demo_solved_${topicKey}`;
+    const completedFlag = `demo_completed_${question.id}`;
+    if (localStorage.getItem(completedFlag) !== "1") {
       const currentSolved = Number(localStorage.getItem(solvedKey) || "0");
       localStorage.setItem(solvedKey, String(currentSolved + 1));
       localStorage.setItem(completedFlag, "1");
     }
-    // --------------------------------------------------------------------------
-
-    // --- DEMO: also store gain so Dashboard card updates instantly ---
-    const gainFraction = Math.max(0, finalMastery - startMastery); // 0..1
-    localStorage.setItem(`demo_mastery_${topicKey}`, String(finalMastery));
-    localStorage.setItem(`demo_gain_${topicKey}`, String(gainFraction));
-    // ---------------------------------------------------------------
 
     setPhase("complete");
   };
@@ -265,40 +219,38 @@ const PracticeSession = () => {
                 the first try!
               </p>
               <div className="mb-6 rounded-xl border border-border bg-background p-4 text-left">
-                <p className="text-sm text-muted-foreground">
-                  Mastery summary (this topic)
-                </p>
+                <p className="text-sm text-muted-foreground">Session Summary</p>
 
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-sm font-medium text-foreground">
-                    Usual gain
+                    Session gain
                   </span>
-                  <span className="font-bold text-success">
-                    +{usualGainPct}%
-                  </span>
-                </div>
-
-                <div className="mt-1 flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground">
-                    Improvement bonus
-                  </span>
-                  <span
-                    className={`font-bold ${bonusGainPct > 0 ? "text-success" : "text-muted-foreground"}`}
-                  >
-                    {bonusGainPct > 0
-                      ? `+${bonusGainPct}%`
-                      : "0% (repeat to earn)"}
-                  </span>
+                  <span className="font-bold text-success">+{gainPct}%</span>
                 </div>
 
                 <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
                   <span className="text-sm font-medium text-foreground">
-                    New mastery
+                    Current mastery
                   </span>
                   <span className="font-bold text-primary">
                     {Math.round(mastery * 100)}%
                   </span>
                 </div>
+
+                {(() => {
+                  const allTopicIds = mockTopics.map((t) => t.id);
+                  const g = getGrowthGrade(allTopicIds);
+                  return (
+                    <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+                      <span className="text-sm font-medium text-foreground">
+                        Improvement Grade
+                      </span>
+                      <span className="font-bold text-accent">
+                        {g.grade > 0 ? `${g.letter} (${g.grade}%)` : "—"}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex gap-3">
                 <motion.button

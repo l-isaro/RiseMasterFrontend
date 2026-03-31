@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Progress from "./pages/Progress";
 import PracticeSession from "./pages/PracticeSession";
 import Login from "./pages/Login";
+import TermsOfUse from "./pages/TermsOfUse";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/progress" element={<Progress />} />
           <Route path="/practice" element={<PracticeSession />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/terms" element={<TermsOfUse />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

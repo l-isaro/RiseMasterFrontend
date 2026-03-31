@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { renderWithProviders } from "../utils";
 import Progress from "@/pages/Progress";
 
@@ -10,39 +10,7 @@ vi.mock("react-router-dom", async (importOriginal) => {
   return { ...actual, useNavigate: () => vi.fn() };
 });
 
-const mockToast = vi.fn();
-vi.mock("@/hooks/use-toast", () => ({
-  useToast: () => ({ toast: mockToast }),
-}));
-
-vi.mock("@/data/api.js", () => ({
-  getUserMastery: vi.fn(),
-}));
-
-import { getUserMastery } from "@/data/api.js";
-
 // -------------------------------------------------------
-
-const fakeMastery = [
-  {
-    skill_name: "geometric_progression",
-    mastery_prob: 72,
-    delta: 18,
-    interactions_count: 8,
-  },
-  {
-    skill_name: "calculus_basics",
-    mastery_prob: 45,
-    delta: 5,
-    interactions_count: 4,
-  },
-  {
-    skill_name: "trigonometry",
-    mastery_prob: 30,
-    delta: -3,
-    interactions_count: 2,
-  },
-];
 
 describe("Progress Page", () => {
   beforeEach(() => {
@@ -50,113 +18,65 @@ describe("Progress Page", () => {
     localStorage.clear();
   });
 
-  it("shows a loading indicator while mastery data is being fetched", () => {
-    localStorage.setItem("user_id", "user-123");
-    (getUserMastery as ReturnType<typeof vi.fn>).mockReturnValue(
-      new Promise(() => {}),
+  it("renders page heading and empty state when no practice data exists", () => {
+    renderWithProviders(<Progress />);
+
+    expect(screen.getByText("Your Progress")).toBeInTheDocument();
+    expect(screen.getByText(/no mastery data yet/i)).toBeInTheDocument();
+  });
+
+  it("renders improvement breakdown dimensions", () => {
+    renderWithProviders(<Progress />);
+
+    expect(screen.getByText("Improvement Breakdown")).toBeInTheDocument();
+    expect(screen.getByText("Mastery Growth")).toBeInTheDocument();
+    expect(screen.getByText("Consistency")).toBeInTheDocument();
+    expect(screen.getByText("Persistence")).toBeInTheDocument();
+    expect(screen.getByText("Breadth")).toBeInTheDocument();
+  });
+
+  it("shows improvement grade and topic mastery when BKT history exists", () => {
+    // Seed BKT history for sequences
+    localStorage.setItem(
+      "bkt_history_sequences",
+      JSON.stringify([
+        { timestamp: Date.now(), correct: true, hintsUsed: 0 },
+        { timestamp: Date.now(), correct: true, hintsUsed: 0 },
+        { timestamp: Date.now(), correct: true, hintsUsed: 0 },
+      ]),
+    );
+    localStorage.setItem("bkt_mastery_sequences", "0.52");
+
+    // Seed a session log for consistency tracking
+    localStorage.setItem(
+      "growth_sessions",
+      JSON.stringify([{ timestamp: Date.now(), skill: "sequences" }]),
     );
 
     renderWithProviders(<Progress />);
 
-    expect(screen.getByText(/loading progress/i)).toBeInTheDocument();
+    expect(screen.getByText("Your Progress")).toBeInTheDocument();
+    // Topic breakdown shows the mastery percentage
+    expect(screen.getByText("52%")).toBeInTheDocument();
+    // Total interactions should reflect the 3 seeded entries
+    expect(screen.getByText("3")).toBeInTheDocument();
   });
 
-  it("shows an error message when no user_id is in localStorage", async () => {
-    renderWithProviders(<Progress />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/no user found/i)).toBeInTheDocument();
-    });
-  });
-
-  it("renders mastery rings and stats after a successful API load", async () => {
-    localStorage.setItem("user_id", "user-123");
-    (getUserMastery as ReturnType<typeof vi.fn>).mockResolvedValue({
-      mastery: fakeMastery,
-    });
-
-    renderWithProviders(<Progress />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Your Progress")).toBeInTheDocument();
-    });
-
-    // Stat labels
-    expect(screen.getByText("Total Improvement")).toBeInTheDocument();
-    expect(screen.getByText("Problems Solved")).toBeInTheDocument();
-  });
-
-  it("renders a mastery progress bar for each topic returned by the API", async () => {
-    localStorage.setItem("user_id", "user-123");
-    (getUserMastery as ReturnType<typeof vi.fn>).mockResolvedValue({
-      mastery: fakeMastery,
-    });
-
-    renderWithProviders(<Progress />);
-
-    // Skill names formatted as human-readable topic names
-    await waitFor(() => {
-      expect(screen.getByText("Geometric Progression")).toBeInTheDocument();
-      expect(screen.getByText("Calculus Basics")).toBeInTheDocument();
-      expect(screen.getByText("Trigonometry")).toBeInTheDocument();
-    });
-  });
-
-  it("shows an empty-state message when no mastery data is available", async () => {
-    localStorage.setItem("user_id", "user-123");
-    (getUserMastery as ReturnType<typeof vi.fn>).mockResolvedValue({
-      mastery: [],
-    });
-
-    renderWithProviders(<Progress />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/no mastery data yet/i)).toBeInTheDocument();
-    });
-  });
-
-  it("calls getUserMastery with the correct user_id", async () => {
-    localStorage.setItem("user_id", "user-456");
-    (getUserMastery as ReturnType<typeof vi.fn>).mockResolvedValue({
-      mastery: [],
-    });
-
-    renderWithProviders(<Progress />);
-
-    await waitFor(() => {
-      expect(getUserMastery).toHaveBeenCalledWith("user-456");
-    });
-  });
-
-  it("shows an error banner and a destructive toast when the API call fails", async () => {
-    localStorage.setItem("user_id", "user-123");
-    (getUserMastery as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error("Service unavailable"),
+  it("shows all six topics from mockTopics in the topic breakdown", () => {
+    // Seed at least one interaction so the topic list renders (not empty state)
+    localStorage.setItem(
+      "bkt_history_sequences",
+      JSON.stringify([{ timestamp: Date.now(), correct: true, hintsUsed: 0 }]),
     );
+    localStorage.setItem("bkt_mastery_sequences", "0.3");
 
     renderWithProviders(<Progress />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Service unavailable")).toBeInTheDocument();
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" }),
-      );
-    });
-  });
-
-  it("merges demo mastery from localStorage into the topic list", async () => {
-    localStorage.setItem("user_id", "user-123");
-    localStorage.setItem("demo_mastery_geometric_progression", "0.75");
-    localStorage.setItem("demo_gain_geometric_progression", "0.20");
-    // Return empty mastery from API so the demo row is injected
-    (getUserMastery as ReturnType<typeof vi.fn>).mockResolvedValue({
-      mastery: [],
-    });
-
-    renderWithProviders(<Progress />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Sequences")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Sequences")).toBeInTheDocument();
+    expect(screen.getByText("Exponential Functions")).toBeInTheDocument();
+    expect(screen.getByText("Trigonometry")).toBeInTheDocument();
+    expect(screen.getByText("Calculus")).toBeInTheDocument();
+    expect(screen.getByText("Complex Numbers")).toBeInTheDocument();
+    expect(screen.getByText("Statistics")).toBeInTheDocument();
   });
 });

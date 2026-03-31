@@ -88,7 +88,6 @@ const Login = () => {
               className="w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
-
           <div>
             <label className="mb-1 block text-sm font-medium text-foreground">
               Password
@@ -101,7 +100,6 @@ const Login = () => {
               className="w-full rounded-lg border border-input bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
-
           {/* Button with loading */}
           <motion.button
             whileHover={{ scale: isLoading ? 1 : 1.02 }}
@@ -123,7 +121,6 @@ const Login = () => {
               </>
             )}
           </motion.button>
-
           {/* Link to register */}
           <p className="text-center text-sm text-muted-foreground">
             Don’t have an account?{" "}
@@ -134,7 +131,17 @@ const Login = () => {
             >
               Create one
             </button>
-          </p>
+          </p>{" "}
+          <p className="text-center text-xs text-muted-foreground/60">
+            By continuing, you agree to our{" "}
+            <button
+              type="button"
+              onClick={() => navigate("/terms")}
+              className="underline hover:text-muted-foreground"
+            >
+              Terms of Use
+            </button>
+          </p>{" "}
         </form>
       </motion.div>
     </div>

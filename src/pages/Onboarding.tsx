@@ -154,7 +154,17 @@ const Onboarding = () => {
               onClick={() => navigate("/login")}
               className="font-semibold text-primary hover:underline"
             >
-              logins
+              Login
+            </button>
+          </p>
+          <p className="text-center text-xs text-muted-foreground/60">
+            By signing up, you agree to our{" "}
+            <button
+              type="button"
+              onClick={() => navigate("/terms")}
+              className="underline hover:text-muted-foreground"
+            >
+              Terms of Use
             </button>
           </p>
         </form>
