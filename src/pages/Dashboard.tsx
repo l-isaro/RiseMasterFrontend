@@ -137,7 +137,7 @@ const Dashboard = () => {
             {
               icon: Target,
               label: "Overall Mastery",
-              value: `${Math.round(overallMastery * 100)}%`,
+              value: `${Math.round(growth.masteryGrowth * 100)}%`,
               sublabel: "across all topics",
               bgClass: "bg-success/10 text-success",
             },
