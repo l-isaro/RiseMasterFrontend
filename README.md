@@ -1,32 +1,184 @@
 # RISEMASTER Frontend
 
-**RISEMASTER** is an AI-powered adaptive mathematics learning platform for Rwandan secondary school students (S1–S6). It uses real REB national examination past papers, step-by-step guidance, teen-friendly concept introductions, multi-level hints, and Bayesian Knowledge Tracing (BKT) to track and celebrate individual learning progress (growth mindset over final scores).
+**RISEMASTER** is an AI-powered adaptive mathematics learning platform for Rwandan secondary school students (S1–S6). It uses real REB national examination past papers, step-by-step guidance, teen-friendly concept introductions, multi-level hints, and **Bayesian Knowledge Tracing (BKT)** to track and celebrate individual learning progress — promoting a growth mindset over final scores.
 
-This repository contains the **frontend web application** built with React, Tailwind CSS, and modern best practices.
-## Project Context
+This repository contains the **frontend web application**.
 
-**Full Title**  
-Modeling Individual Educational Gain in STEM: An AI-Powered Platform for Tracking and Rewarding Learning Progress in African Higher Education
+> **Full Title:** Modeling Individual Educational Gain in STEM: An AI-Powered Platform for Tracking and Rewarding Learning Progress in African Higher Education
 
-### Completed Features
-- Responsive web layout (desktop-first, mobile/tablet supported)
-- Routing setup with React Router v6
-- **Registration / Login page**
-- **Dashboard**
-- **Profile page**
-- **Not Found (404) page**
-- Basic styling with Tailwind CSS
-- Clean component structure and shared UI elements
+---
 
-### Missing / In Progress Features
-- **Practice Session page**
-- **Progress page**
-- API integration for practice & progress data
-- Animations (Framer Motion) & micro-interactions
+## Table of Contents
 
-### Screenshots
-<img width="1918" height="921" alt="image" src="https://github.com/user-attachments/assets/bda71292-bfb4-4b1c-a178-b6778f00ecae" />
-<img width="1899" height="922" alt="image" src="https://github.com/user-attachments/assets/4c4777af-62cf-47a6-9a1d-540093c193a1" />
-<img width="1896" height="922" alt="image" src="https://github.com/user-attachments/assets/4dd964a5-749c-42e5-bac6-ba96f973c739" />
-<img width="1919" height="924" alt="image" src="https://github.com/user-attachments/assets/8a4f62fa-bcf6-4278-bc0f-6e6ffef42635" />
-<img width="1918" height="926" alt="image" src="https://github.com/user-attachments/assets/bc08247f-98ff-4216-9533-0ad6f5a0d4d0" />
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Available Scripts](#available-scripts)
+- [Routing](#routing)
+- [API Integration](#api-integration)
+- [Bayesian Knowledge Tracing](#bayesian-knowledge-tracing)
+- [Testing](#testing)
+- [Linting](#linting)
+- [Features](#features)
+- [Screenshots](#screenshots)
+
+
+## Prerequisites
+
+- **Node.js** ≥ 18 (LTS recommended)
+- **npm** ≥ 9 (ships with Node) — or **Bun** ≥ 1.0
+
+---
+
+## Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/<your-org>/RiseMasterFrontend.git
+cd RiseMasterFrontend
+```
+
+### 2. Install dependencies
+
+```bash
+# Using npm
+npm install
+
+# Or using Bun
+bun install
+```
+
+### 3. Start the development server
+
+```bash
+npm run dev
+```
+
+The app will be available at **http://localhost:8080**.
+
+### 4. Build for production
+
+```bash
+npm run build
+```
+
+The output will be in the `dist/` directory. Preview it locally with:
+
+```bash
+npm run preview
+```
+
+---
+
+## Available Scripts
+
+| Command              | Description                                      |
+| -------------------- | ------------------------------------------------ |
+| `npm run dev`        | Start Vite dev server on port 8080               |
+| `npm run build`      | Production build (TypeScript check + Vite build) |
+| `npm run build:dev`  | Development build (unminified, with source maps) |
+| `npm run preview`    | Preview the production build locally             |
+| `npm run lint`       | Run ESLint across the codebase                   |
+| `npm run test`       | Run all tests once with Vitest                   |
+| `npm run test:watch` | Run tests in watch mode                          |
+
+
+### Path Aliases
+
+The project uses `@/` as an alias for `src/`:
+
+```ts
+import { Button } from "@/components/ui/button";
+```
+
+---
+
+## Routing
+
+| Path         | Page            | Description                                |
+| ------------ | --------------- | ------------------------------------------ |
+| `/`          | Onboarding      | Landing page & student registration        |
+| `/login`     | Login           | Email / ID-based login                     |
+| `/dashboard` | Dashboard       | Topic overview, mastery rings, quick stats |
+| `/practice`  | PracticeSession | Adaptive step-by-step problem solving      |
+| `/progress`  | Progress        | Mastery analytics & learning charts        |
+| `/profile`   | Profile         | Student profile & settings                 |
+| `/terms`     | TermsOfUse      | Terms of use                               |
+| `*`          | NotFound        | 404 catch-all                              |
+
+---
+
+## API Integration
+
+The frontend communicates with a REST API hosted at `https://risemasterbackend.onrender.com/api`. Key endpoints consumed:
+
+| Function            | Method | Endpoint               |
+| ------------------- | ------ | ---------------------- |
+| `registerUser`      | POST   | `/users/register`      |
+| `loginUser`         | POST   | `/users/login`         |
+| `getTopics`         | GET    | `/topics?user_id=`     |
+| `getUserStats`      | GET    | `/users/:id/stats`     |
+| `getUserMastery`    | GET    | `/users/:id/mastery`   |
+| `getNextProblem`    | POST   | `/problems/next`       |
+| `submitInteraction` | POST   | `/interactions/submit` |
+
+API functions are located in `src/data/api.js`.
+
+---
+
+## Bayesian Knowledge Tracing
+
+The frontend includes a client-side BKT engine (`src/lib/bkt.ts`) that mirrors the pyBKT backend service. It maintains per-skill mastery using a Hidden Markov Model with four parameters:
+
+- **P(L₀)** — initial probability of knowing the skill
+- **P(T)** — probability of transitioning from unlearned → learned
+- **P(G)** — probability of guessing correctly while not knowing
+- **P(S)** — probability of slipping (incorrect despite knowing)
+
+Parameters are tuned per topic difficulty (e.g., arithmetic vs. calculus) to produce realistic mastery curves.
+
+---
+
+## Testing
+
+Tests use **Vitest** with **jsdom** and **React Testing Library**. Test files live in `src/test/integration/`.
+
+```bash
+# Run all tests
+npm run test
+
+# Watch mode
+npm run test:watch
+```
+
+---
+
+## Linting
+
+ESLint is configured with TypeScript and React hooks rules.
+
+```bash
+npm run lint
+```
+
+---
+
+## Features
+
+- Responsive web layout (desktop-first, mobile & tablet supported)
+- Student registration & login flow
+- Dashboard with topic cards and mastery overview
+- Adaptive practice sessions with step-by-step scaffolding
+- Multi-level hint system (3 progressive hints per step)
+- Real-time mastery tracking with BKT
+- Progress analytics with Recharts visualizations
+- KaTeX math rendering for equations and expressions
+- Framer Motion animations & micro-interactions
+- Dark/light theme support via next-themes
+- Toast notifications (Sonner + Radix Toast)
+- Student profile management
+
+
+## License
+
+This project is part of an academic research initiative. All rights reserved.
